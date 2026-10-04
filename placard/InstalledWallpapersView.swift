@@ -101,21 +101,19 @@ struct InstalledWallpapersView: View {
         }
     }
 
-    /// Container lookup failures append a probe report after a blank line; keep the
-    /// usual empty state on top and the report selectable and copyable below it.
+    /// Container lookup failures show the usual empty state immediately and append
+    /// the probe report below it once the (slow) root sweeps finish.
     @ViewBuilder
     private func failureView(_ message: String) -> some View {
-        let parts = message.components(separatedBy: "\n\n")
-        let report = parts.count > 1 ? parts.dropFirst().joined(separator: "\n\n") : ""
         VStack(spacing: 12) {
             ContentUnavailableView {
                 Label("Unable to Load", systemImage: "exclamationmark.triangle")
             } description: {
-                Text(parts.first ?? message)
+                Text(message)
             } actions: {
                 Button("Retry") { Task { await manager.load() } }
             }
-            if !report.isEmpty {
+            if let report = manager.diagnostics {
                 ScrollView {
                     Text(report)
                         .font(.system(.caption2, design: .monospaced))
@@ -131,6 +129,15 @@ struct InstalledWallpapersView: View {
                 } label: {
                     Label("Copy Diagnostics", systemImage: "doc.on.doc")
                 }
+                .padding(.bottom, 12)
+            } else if let progress = manager.diagnosticsProgress {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text(progress)
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 20)
                 .padding(.bottom, 12)
             }
         }

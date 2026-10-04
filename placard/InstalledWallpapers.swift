@@ -134,6 +134,10 @@ final class InstalledWallpapersManager {
     }
 
     private(set) var state: State = .idle
+    /// Container probe report, filled in after a lookup failure while the error screen
+    /// is already visible: each root needs its own inode sweep.
+    private(set) var diagnostics: String?
+    private(set) var diagnosticsProgress: String?
     private let library: InstalledWallpaperLibrary
 
     init(library: InstalledWallpaperLibrary = .live) {
@@ -142,26 +146,36 @@ final class InstalledWallpapersManager {
 
     func load() async {
         state = .loading
+        diagnostics = nil
+        diagnosticsProgress = nil
         do {
             state = .loaded(InstalledWallpaperCollection(try await library.load()))
         } catch is CancellationError {
             return
         } catch {
-            state = .failed(await Self.failureMessage(for: error))
+            state = .failed(error.localizedDescription)
+            guard error is BadQueryError else { return }
+            await collectDiagnostics()
         }
     }
 
-    /// Container failures carry a probe report so the Library screen can show and
-    /// copy why the lookup failed on this OS build.
-    private static func failureMessage(for error: Error) async -> String {
-        let message = error.localizedDescription
-        guard error is BadQueryError else { return message }
+    /// Shows why the container lookup failed on this OS build. The error screen is
+    /// already up before this runs, because probing every root takes seconds.
+    private func collectDiagnostics() async {
         let isSupported = SystemCompatibility.isSupported
-        let report = await Task.detached(priority: .userInitiated) {
-            BadQuery.containerDiagnostics(isSupported: isSupported)
-        }.value
-        NSLog("[Placard] %@\n%@", message, report)
-        return message + "\n\n" + report
+        var sections = [BadQuery.diagnosticsHeader(isSupported: isSupported)]
+        let roots = BadQuery.diagnosticsRoots
+        for (index, root) in roots.enumerated() {
+            diagnosticsProgress = "Probing \(index + 1)/\(roots.count): \(root)"
+            let section = await Task.detached(priority: .userInitiated) {
+                BadQuery.diagnostics(forRoot: root)
+            }.value
+            sections.append(section)
+        }
+        diagnosticsProgress = nil
+        let report = sections.joined(separator: "\n")
+        diagnostics = report
+        NSLog("[Placard] container lookup failed\n%@", report)
     }
 
     func delete(_ wallpapers: [InstalledWallpaper]) {
