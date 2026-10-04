@@ -7,6 +7,8 @@
 "Unable to Load" = "Unable to Load";
 "Unable to Load" = "Unable to Load";
 "Retry" = "Retry";
+"Copy Diagnostics" = "Copy Diagnostics";
+"This system does not allow Placard to reach other apps' containers." = "This system does not allow Placard to reach other apps' containers.";
 "Category" = "Category";
 "Sort" = "Sort";
 "Search" = "Search";

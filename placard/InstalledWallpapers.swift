@@ -147,8 +147,20 @@ final class InstalledWallpapersManager {
         } catch is CancellationError {
             return
         } catch {
-            state = .failed(error.localizedDescription)
+            state = .failed(await Self.failureMessage(for: error))
         }
+    }
+
+    /// Container failures carry a probe report so the Library screen can show and
+    /// copy why the lookup failed on this OS build.
+    private static func failureMessage(for error: Error) async -> String {
+        let message = error.localizedDescription
+        guard error is BadQueryError else { return message }
+        let report = await Task.detached(priority: .userInitiated) {
+            BadQuery.containerDiagnostics()
+        }.value
+        NSLog("[Placard] %@\n%@", message, report)
+        return message + "\n\n" + report
     }
 
     func delete(_ wallpapers: [InstalledWallpaper]) {

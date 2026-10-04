@@ -7,6 +7,8 @@
 "Unable to Load" = "无法加载";
 "Unable to Load" = "无法加载";
 "Retry" = "重试";
+"Copy Diagnostics" = "复制诊断信息";
+"This system does not allow Placard to reach other apps' containers." = "当前系统不允许 Placard 访问其它 App 的容器。";
 "Category" = "分类";
 "Sort" = "排序方式";
 "Search" = "搜索";

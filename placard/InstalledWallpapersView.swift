@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct InstalledWallpapersView: View {
     @State private var manager: InstalledWallpapersManager
@@ -88,13 +89,7 @@ struct InstalledWallpapersView: View {
                 }
             }
         case .failed(let message):
-            ContentUnavailableView {
-                Label("Unable to Load", systemImage: "exclamationmark.triangle")
-            } description: {
-                Text(message)
-            } actions: {
-                Button("Retry") { Task { await manager.load() } }
-            }
+            failureView(message)
         case .deleting:
             ProgressView("Deleting…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -103,6 +98,41 @@ struct InstalledWallpapersView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .respringing:
             Color.black.ignoresSafeArea()
+        }
+    }
+
+    /// Container lookup failures append a probe report after a blank line; keep the
+    /// usual empty state on top and the report selectable and copyable below it.
+    @ViewBuilder
+    private func failureView(_ message: String) -> some View {
+        let parts = message.components(separatedBy: "\n\n")
+        let report = parts.count > 1 ? parts.dropFirst().joined(separator: "\n\n") : ""
+        VStack(spacing: 12) {
+            ContentUnavailableView {
+                Label("Unable to Load", systemImage: "exclamationmark.triangle")
+            } description: {
+                Text(parts.first ?? message)
+            } actions: {
+                Button("Retry") { Task { await manager.load() } }
+            }
+            if !report.isEmpty {
+                ScrollView {
+                    Text(report)
+                        .font(.system(.caption2, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                }
+                .frame(maxHeight: 240)
+                .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal, 20)
+                Button {
+                    UIPasteboard.general.string = report
+                } label: {
+                    Label("Copy Diagnostics", systemImage: "doc.on.doc")
+                }
+                .padding(.bottom, 12)
+            }
         }
     }
 
