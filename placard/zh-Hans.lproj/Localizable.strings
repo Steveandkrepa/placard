@@ -125,3 +125,6 @@
 "Pair again" = "重新配对";
 "Checking connection…" = "检查连接…";
 "Check and enter" = "检查并进入";
+"Run Airlift Read Probe" = "运行 Airlift 读取探针";
+"Probing over the pairing tunnel…" = "正在通过配对隧道探测…";
+"Copy Probe Report" = "复制探针报告";

@@ -114,18 +114,9 @@ struct InstalledWallpapersView: View {
                 Button("Retry") { Task { await manager.load() } }
             }
             if let report = manager.diagnostics {
-                ScrollView {
-                    Text(report)
-                        .font(.system(.caption2, design: .monospaced))
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(12)
-                }
-                .frame(maxHeight: 240)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
-                .padding(.horizontal, 20)
+                reportScroll(report)
                 Button {
-                    UIPasteboard.general.string = report
+                    UIPasteboard.general.string = manager.fullReport
                 } label: {
                     Label("Copy Diagnostics", systemImage: "doc.on.doc")
                 }
@@ -140,7 +131,45 @@ struct InstalledWallpapersView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
             }
+            Button {
+                Task { await manager.runAirliftProbe() }
+            } label: {
+                Label("Run Airlift Read Probe", systemImage: "antenna.radiowaves.left.and.right")
+            }
+            .disabled(manager.airliftProbeRunning)
+            if manager.airliftProbeRunning {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Probing over the pairing tunnel…")
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 20)
+            }
+            if let probe = manager.airliftProbeReport {
+                reportScroll(probe)
+                Button {
+                    UIPasteboard.general.string = probe
+                } label: {
+                    Label("Copy Probe Report", systemImage: "doc.on.doc")
+                }
+                .padding(.bottom, 12)
+            }
         }
+    }
+
+    @ViewBuilder
+    private func reportScroll(_ text: String) -> some View {
+        ScrollView {
+            Text(text)
+                .font(.system(.caption2, design: .monospaced))
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(12)
+        }
+        .frame(maxHeight: 240)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 20)
     }
 
     private var selectedWallpapers: [InstalledWallpaper] {

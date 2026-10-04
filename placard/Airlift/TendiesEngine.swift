@@ -222,6 +222,42 @@ public final class TendiesEngine {
         }
     }
 
+    // MARK: - Airlift Container Read Probe (diagnostic)
+
+    /// Asks the pairing tunnel to read PosterBoard's container the way the wallpaper
+    /// library would: list the container root, read its metadata plist, and try the
+    /// same paths through house_arrest and afc.root. Used to look for a replacement
+    /// for bad_query on OS builds where its sandbox escape is patched.
+    public func readProbeReport(pairingPath: String) async throws -> String {
+        return try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                var outReport: UnsafeMutablePointer<CChar>? = nil
+                var outError: UnsafeMutablePointer<CChar>? = nil
+
+                let rc = pairingPath.withCString { pairC in
+                    al_read_probe(pairC, nil, nil, &outReport, &outError)
+                }
+
+                if rc == 0, let p = outReport {
+                    let report = String(cString: p)
+                    al_string_free(p)
+                    continuation.resume(returning: report)
+                } else {
+                    let errStr = outError.flatMap { p in
+                        let s = String(cString: p)
+                        al_string_free(p)
+                        return s
+                    } ?? "Airlift read probe failed"
+                    continuation.resume(throwing: NSError(
+                        domain: "TendiesEngine",
+                        code: Int(rc),
+                        userInfo: [NSLocalizedDescriptionKey: errStr]
+                    ))
+                }
+            }
+        }
+    }
+
     // MARK: - Send Respring Signal via Tunnel
 
     public func sendRespringSignal(pairingPath: String) async -> Bool {

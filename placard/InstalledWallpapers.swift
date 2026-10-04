@@ -138,6 +138,10 @@ final class InstalledWallpapersManager {
     /// is already visible: each root needs its own inode sweep.
     private(set) var diagnostics: String?
     private(set) var diagnosticsProgress: String?
+    /// Report from the Airlift-side read probe, which asks the pairing tunnel to read
+    /// the PosterBoard container directly instead of going through bad_query.
+    private(set) var airliftProbeReport: String?
+    private(set) var airliftProbeRunning = false
     private let library: InstalledWallpaperLibrary
 
     init(library: InstalledWallpaperLibrary = .live) {
@@ -176,6 +180,31 @@ final class InstalledWallpapersManager {
         let report = sections.joined(separator: "\n")
         diagnostics = report
         NSLog("[Placard] container lookup failed\n%@", report)
+    }
+
+    /// Everything the user can send back: the bad_query sweep plus the Airlift probe.
+    var fullReport: String {
+        [diagnostics, airliftProbeReport].compactMap { $0 }.joined(separator: "\n\n")
+    }
+
+    /// Runs the Airlift read probe: can the tunnel read PosterBoard's container even
+    /// though bad_query's sandbox escape no longer works on this build?
+    func runAirliftProbe() async {
+        guard !airliftProbeRunning else { return }
+        airliftProbeRunning = true
+        defer { airliftProbeRunning = false }
+        let pairingPath = PairingController.pairingFilePath()
+        guard FileManager.default.fileExists(atPath: pairingPath) else {
+            airliftProbeReport = "AIRLIFT-READ-PROBE\npairing file missing at \(pairingPath)"
+            return
+        }
+        do {
+            let report = try await TendiesEngine.shared.readProbeReport(pairingPath: pairingPath)
+            airliftProbeReport = report
+            NSLog("[Placard] airlift read probe\n%@", report)
+        } catch {
+            airliftProbeReport = "AIRLIFT-READ-PROBE FAILED: \(error.localizedDescription)"
+        }
     }
 
     func delete(_ wallpapers: [InstalledWallpaper]) {
