@@ -156,8 +156,9 @@ final class InstalledWallpapersManager {
     private static func failureMessage(for error: Error) async -> String {
         let message = error.localizedDescription
         guard error is BadQueryError else { return message }
+        let isSupported = SystemCompatibility.isSupported
         let report = await Task.detached(priority: .userInitiated) {
-            BadQuery.containerDiagnostics()
+            BadQuery.containerDiagnostics(isSupported: isSupported)
         }.value
         NSLog("[Placard] %@\n%@", message, report)
         return message + "\n\n" + report
